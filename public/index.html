@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>키워드 견적 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f7f9fc;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .result-card {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media print {
+      .no-print {
+        display: none;
+      }
+      body {
+        background-color: white;
+      }
+      .container {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="no-print bg-white p-6 rounded-lg shadow-md mb-6">
+      <h1 class="text-2xl font-bold mb-4">키워드 견적 생성기</h1>
+      
+      <!-- 키워드 검색 도구 섹션 -->
+      <div class="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-md">
+        <h2 class="text-lg font-semibold mb-2">키워드 검색량 조회</h2>
+        <div class="flex items-end gap-2">
+          <div class="flex-grow">
+            <label class="block text-sm text-gray-600 mb-1">키워드 입력</label>
+            <input 
+              type="text" 
+              id="keywordInput" 
+              class="w-full p-2 border border-gray-300 rounded-md" 
+              placeholder="검색할 키워드 입력 (여러 키워드는 쉼표로 구분)"
+            >
+          </div>
+          <button 
+            id="searchBtn"
+            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center"
+          >
+            <span id="searchSpinner" class="spinner hidden"></span>
+            <span>검색량 조회</span>
+          </button>
+        </div>
+        
+        <!-- 검색 결과 영역 -->
+        <div id="searchResult" class="mt-3 hidden">
+          <h3 class="font-medium text-sm mb-1">검색 결과:</h3>
+          <div class="bg-white p-3 rounded border result-card">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b">
+                  <th class="text-left py-1">키워드</th>
+                  <th class="text-right py-1">월 검색량</th>
+                  <th class="text-right py-1">추가</th>
+                </tr>
+              </thead>
+              <tbody id="keywordResultsList">
+                <!-- 여기에 검색 결과가 표시됩니다 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="text-xs text-gray-500 mt-2">
+          * 서버리스 API를 통한 검색량 데이터입니다. 여러 키워드는 쉼표로 구분해서 입력하세요.
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2 font-medium">
+          키워드 정보 입력 (형식: 키워드 검색량 가격)
+        </label>
+        <textarea 
+          id="inputText"
+          rows="6"
+          class="w-full p-3 border border-gray-300 rounded-md"
+          placeholder="양재역 헬스 1,020 60&#10;양재역 헬스장 2,200 65&#10;양재 헬스장 570 35&#10;양재 PT 360 40"
+        ></textarea>
+        <div class="text-sm text-gray-500 mt-1">
+          각 줄에 "키워드 검색량 가격" 형식으로 입력하세요. 가격은 만원 단위입니다.
+        </div>
+      </div>
+      
+      <div class="flex space-x-2 mb-4">
+        <button 
+          id="generateBtn"
+          class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+        >
+          견적서 생성
+        </button>
+        <button 
+          id="printBtn"
+          class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition"
+        >
+          인쇄하기
+        </button>
+        <button 
+          id="clearBtn"
+          class="border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-100 transition"
+        >
+          초기화
+        </button>
+        <button 
+          id="sampleBtn"
+          class="border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-100 transition"
+        >
+          샘플 데이터
+        </button>
+      </div>
+      
+      <div class="text-sm text-gray-600">
+        <h3 class="font-medium mb-1">사용 방법:</h3>
+        <ol class="list-decimal pl-5 space-y-1">
+          <li>상단에서 키워드를 입력하고 "검색량 조회" 버튼을 클릭하여 검색량을 확인할 수 있습니다.</li>
+          <li>각 줄에 "키워드 검색량 가격" 형식으로 입력하세요. (예: 양재역 헬스 1,020 60)</li>
+          <li>가격은 만원 단위입니다. (60 → 600,000원으로 자동 변환)</li>
+          <li>"견적서 생성" 버튼을 클릭하면 아래에 템플릿이 생성됩니다.</li>
+        </ol>
+      </div>
+    </div>
+    
+    <div id="reportContainer" class="hidden">
+      <!-- 여기에 보고서가 생성됩니다 -->
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // DOM 요소
+      const inputText = document.getElementById('inputText');
+      const generateBtn = document.getElementById('generateBtn');
+      const printBtn = document.getElementById('printBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const sampleBtn = document.getElementById('sampleBtn');
+      const reportContainer = document.getElementById('reportContainer');
+      const keywordInput = document.getElementById('keywordInput');
+      const searchBtn = document.getElementById('searchBtn');
+      const searchResult = document.getElementById('searchResult');
+      const keywordResultsList = document.getElementById('keywordResultsList');
+      const searchSpinner = document.getElementById('searchSpinner');
+      
+      // 키워드 검색 기능
+      async function searchKeywords() {
+        const keywordsInput = keywordInput.value.trim();
+        if (!keywordsInput) {
+          alert('검색할 키워드를 입력해주세요.');
+          return;
+        }
+        
+        // 쉼표로 구분된 키워드를 배열로 변환
+        const keywords = keywordsInput.split(',').map(k => k.trim()).filter(k => k);
+        
+        if (keywords.length === 0) {
+          alert('유효한 키워드를 입력해주세요.');
+          return;
+        }
+        
+        // 검색 시작 UI 업데이트
+        searchSpinner.classList.remove('hidden');
+        searchBtn.disabled = true;
+        searchResult.classList.add('hidden');
+        
+        try {
+          const results = [];
+          
+          for (const keyword of keywords) {
+            // 서버리스 함수 호출
+            const response = await fetch(`/api/keyword-search?keyword=${encodeURIComponent(keyword)}`);
+            
+            if (!response.ok) {
+              throw new Error(`API 오류: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            
+            results.push({
+              keyword: data.keyword,
+              volume: data.totalViews
+            });
+          }
+          
+          // 검색량 기준 내림차순 정렬
+          results.sort((a, b) => b.volume - a.volume);
+          
+          // 결과 표시
+          displayResults(results);
+        } catch (error) {
+          console.error('검색 오류:', error);
+          alert('검색 중 오류가 발생했습니다: ' + error.message);
+          
+          searchResult.classList.remove('hidden');
+          keywordResultsList.innerHTML = `
+            <tr>
+              <td colspan="3" class="py-3 text-center text-gray-500">
+                검색 중 오류가 발생했습니다. 다시 시도해주세요.
+              </td>
+            </tr>
+          `;
+        } finally {
+          // 검색 완료 UI 업데이트
+          searchSpinner.classList.add('hidden');
+          searchBtn.disabled = false;
+        }
+      }
+      
+      // 검색 결과 표시
+      function displayResults(results) {
+        searchResult.classList.remove('hidden');
+        keywordResultsList.innerHTML = '';
+        
+        if (results.length === 0) {
+          keywordResultsList.innerHTML = `
+            <tr>
+              <td colspan="3" class="py-3 text-center text-gray-500">
+                검색 결과가 없습니다.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        results.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = 'border-b border-gray-100 hover:bg-gray-50';
+          
+          row.innerHTML = `
+            <td class="py-1">${item.keyword}</td>
+            <td class="text-right py-1">${item.volume.toLocaleString()}회</td>
+            <td class="text-right py-1">
+              <button class="text-xs bg-blue-500 text-white px-2 py-0.5 rounded hover:bg-blue-600" onclick="addKeywordToInput('${item.keyword}', ${item.volume})">
+                추가
+              </button>
+            </td>
+          `;
+          
+          keywordResultsList.appendChild(row);
+        });
+      }
+      
+      // 키워드 입력 영역에 추가
+      window.addKeywordToInput = function(keyword, volume) {
+        const currentText = inputText.value;
+        const defaultPrice = 50; // 기본 가격 50만원
+        const newLine = `${keyword} ${volume.toLocaleString()} ${defaultPrice}`;
+        
+        if (currentText.trim() === '') {
+          inputText.value = newLine;
+        } else {
+          inputText.value = currentText + '\n' + newLine;
+        }
+      };
+      
+      // 가격 변환 (60 → 600,000원)
+      function convertPrice(price) {
+        const cleanPrice = price.toString().replace(/,/g, '');
+        const numPrice = parseInt(cleanPrice);
+        
+        if (isNaN(numPrice)) return 0;
+        
+        return numPrice * 10000;
+      }
+      
+      // 숫자 형식: 천 단위 콤마
+      function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      }
+      
+      // 템플릿 생성 함수
+      function generateReport() {
+        const lines = inputText.value.trim().split('\n');
+        if (lines.length === 0 || !inputText.value.trim()) {
+          alert("키워드 정보를 입력해 주세요.");
+          return;
+        }
+        
+        const rows = [];
+        let maxSearchVolume = 0;
+        
+        lines.forEach(line => {
+          line = line.trim();
+          if (!line) return;
+          
+          const tokens = line.split(/\s+/);
+          
+          if (tokens.length < 3) return;
+          
+          const priceStr = tokens.pop();
+          const volumeStr = tokens.pop();
+          const keyword = tokens.join(' ');
+          
+          const searchVolume = parseInt(volumeStr.replace(/,/g, ''));
+          const price = convertPrice(priceStr);
+          
+          if (!isNaN(searchVolume) && searchVolume > maxSearchVolume) {
+            maxSearchVolume = searchVolume;
+          }
+          
+          if (keyword && !isNaN(searchVolume) && price > 0) {
+            rows.push({
+              keyword: keyword,
+              searchVolume: searchVolume,
+              price: price
+            });
+          }
+        });
+        
+        if (rows.length === 0) {
+          alert("유효한 데이터가 없습니다. 입력 형식을 확인해주세요.");
+          return;
+        }
+        
+        const today = new Date();
+        const dateString = today.toLocaleDateString('ko-KR', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        const monthString = today.toLocaleDateString('ko-KR', { 
+          year: 'numeric', 
+          month: 'long'
+        });
+        const reportIdDate = today.toISOString().slice(0, 10).replace(/-/g, '');
+        
+        let reportHTML = `
+          <div class="border border-gray-200 rounded-md overflow-hidden bg-white shadow-md">
+            <!-- 헤더 -->
+            <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+              <div>
+                <h2 class="text-xl font-bold">키워드 견적</h2>
+                <div class="text-sm mt-1">㈜비맵</div>
+              </div>
+              <div class="text-sm">${dateString}</div>
+            </div>
+            
+            <!-- 개요 -->
+            <div class="bg-gray-100 p-4 text-sm">
+              개요: 월간 검색량 및 키워드 가격 분석 데이터
+            </div>
+            
+            <!-- 테이블 -->
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead>
+                  <tr class="bg-gray-800 text-white">
+                    <th class="px-4 py-2 text-left">키워드</th>
+                    <th class="px-4 py-2 text-right">월 검색량</th>
+                    <th class="px-4 py-2 text-right">키워드 가격</th>
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        rows.forEach((row, index) => {
+          const isMaxVolume = row.searchVolume === maxSearchVolume;
+          reportHTML += `
+            <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+              <td class="px-4 py-3 border-t">${row.keyword}</td>
+              <td class="px-4 py-3 text-right border-t ${isMaxVolume ? 'bg-blue-600 text-white' : ''}">
+                ${formatNumber(row.searchVolume)}회
+              </td>
+              <td class="px-4 py-3 text-right border-t bg-blue-50">
+                ${formatNumber(row.price)}원
+              </td>
+            </tr>
+          `;
+        });
+        
+        reportHTML += `
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- 푸터 -->
+            <div class="bg-gray-100 p-3 text-sm text-gray-600">
+              ※ 출처: 키워드 도구 및 시장 조사 (기준: ${monthString})
+            </div>
+            
+            <div class="p-2 text-right text-xs text-gray-500">
+              Report ID: KW-${reportIdDate} | ㈜비맵
+            </div>
+            
+            <div class="text-center text-xs text-gray-400 p-2">
+              CONFIDENTIAL MARKET ANALYSIS
+            </div>
+          </div>
+        `;
+        
+        reportContainer.innerHTML = reportHTML;
+        reportContainer.classList.remove('hidden');
+      }
+      
+      // 인쇄 기능
+      function printReport() {
+        window.print();
+      }
+      
+      // 초기화 기능
+      function clearAll() {
+        inputText.value = '';
+        keywordInput.value = '';
+        searchResult.classList.add('hidden');
+        reportContainer.innerHTML = '';
+        reportContainer.classList.add('hidden');
+      }
+      
+      // 샘플 데이터 채우기
+      function fillSampleData() {
+        inputText.value = `양재역 헬스 1,020 60
+양재역 헬스장 2,200 65
+양재 헬스장 570 35
+양재 PT 360 40`;
+      }
+      
+      // 이벤트 리스너 등록
+      generateBtn.addEventListener('click', generateReport);
+      printBtn.addEventListener('click', printReport);
+      clearBtn.addEventListener('click', clearAll);
+      sampleBtn.addEventListener('click', fillSampleData);
+      searchBtn.addEventListener('click', searchKeywords);
+      
+      // 단축키로 검색 실행
+      keywordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchKeywords();
+        }
+      });
+      
+      // 페이지 로드 시 샘플 데이터 채우기
+      fillSampleData();
+    });
+  </script>
+</body>
+</html>
